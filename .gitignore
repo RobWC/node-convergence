@@ -1,0 +1,11 @@
+*.db
+node_modules
+test-certs
+
+# OS generated files #
+######################
+.DS_Store?
+ehthumbs.db
+Icon?
+Thumbs.db
+
