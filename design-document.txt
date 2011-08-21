@@ -1,0 +1,77 @@
+The REST API is as follows:
+
+There is one supported "noun," which is "target," meaning the
+destination SSL site in question.  There are two supported verbs, POST
+and GET.
+
+For example:
+
+POST /target/host+port
+fingerprint=data
+
+...indicates that the client saw the hex-encoded fingerprint at target
+(host, port).  For this verb, the server supports the following response
+codes:
+
+200 OK -- This indicates that the server considers this fingerprint
+valid, and has added it to its cache.
+
+409 Conflict -- This indicates that the server considers this
+fingerprint invalid.
+
+303 See Other -- This indicates that the server cannot comment
+positively or negatively on the validity of this fingerprint, and that
+its vote should not be counted in the consensus.
+
+503 Service Unavailable -- This indicates that there was a network error
+in trying to determine the validity of this fingerprint.
+
+The response body in the 200 and 409 conditions is a JSON-encoded entity:
+
+{
+"fingerprintList":
+    [
+     {
+      "timestamp":
+      {
+       "start": "<secondsSinceEpoch>",
+       "finish": "<secondsSinceEpoch>"
+      },
+      "fingerprint": "<hexEncodedFingerprint>"
+     },
+     ...
+    ],
+"signature": "<RSA_Signature>"
+}
+
+
+...a list of known fingerprints for the target, along with a range in
+seconds that the notary has seen the fingerprint. The signature is
+calculated by taking the JSON entity without the signature field (key or
+value), hashing it with sha1, and then signing the hash with the
+Notary's key.
+
+The GET verb is the same format:
+
+GET /target/host+port
+
+...but the notary isn't provided with a fingerprint, doesn't validate
+anything, and only returns a response of 200, 303, or 503.  In the case
+of 200, it returns the same JSON encoded entity as above.
+
+The notary can do whatever it would like in order to validate or obtain
+fingerprints.  The default notary distributed with Convergence uses
+network perspective.  This means that it simply connects to the target,
+gets the certificate, and puts the fingerprint and timestamps into a DB
+cache.  It only connects to the target again on a GET verb or on a cache
+miss-match.
+
+The server should listen on three ports: an admin-specified SSL port, an
+admin-specified HTTP port, and a mandatory port of 4242 (which also only
+accepts incoming SSL connections).
+
+The SSL and 4242 ports perform the above REST api.  The HTTP port only
+supports the CONNECT (http ssl-proxy) method, and will only connect to
+destination ports that are 4242.  This is so that any Notary can be an
+anonymous "bounce" relay for any other notary, but not for most
+arbitrary traffic.
